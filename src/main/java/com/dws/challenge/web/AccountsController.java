@@ -1,21 +1,17 @@
 package com.dws.challenge.web;
 
 import com.dws.challenge.domain.Account;
+import com.dws.challenge.dto.FundTransfer;
 import com.dws.challenge.exception.DuplicateAccountIdException;
+import com.dws.challenge.exception.InSufficientFundException;
 import com.dws.challenge.service.AccountsService;
+import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
-import jakarta.validation.Valid;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/v1/accounts")
@@ -48,4 +44,19 @@ public class AccountsController {
     return this.accountsService.getAccount(accountId);
   }
 
+    @PostMapping("/fund/transfer")
+    public ResponseEntity<?> transferFund(@RequestBody FundTransfer fundTransfer) {
+        log.info("Fund Transfer Initiated from Account id {} to Account id {}",
+                fundTransfer.getDebitAccountId(),
+                fundTransfer.getCreditAccountId()
+        );
+        try {
+            this.accountsService.transferFund(fundTransfer);
+            log.info("Fund Transfer Success for Amount : {}", fundTransfer.getFundToBeTransferred());
+        } catch (InSufficientFundException e) {
+            log.warn(e.getMessage());
+            return new ResponseEntity<>(e.getMessage(), HttpStatus.NOT_ACCEPTABLE);
+        }
+        return new ResponseEntity<>("Fund Transfer Success", HttpStatus.ACCEPTED);
+    }
 }
