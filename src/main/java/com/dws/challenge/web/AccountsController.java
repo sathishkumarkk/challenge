@@ -2,6 +2,7 @@ package com.dws.challenge.web;
 
 import com.dws.challenge.domain.Account;
 import com.dws.challenge.dto.FundTransfer;
+import com.dws.challenge.exception.AccountNotFoundException;
 import com.dws.challenge.exception.DuplicateAccountIdException;
 import com.dws.challenge.exception.InSufficientFundException;
 import com.dws.challenge.service.AccountsService;
@@ -53,7 +54,7 @@ public class AccountsController {
         try {
             this.accountsService.transferFund(fundTransfer);
             log.info("Fund Transfer Success for Amount : {}", fundTransfer.getFundToBeTransferred());
-        } catch (InSufficientFundException e) {
+        } catch (AccountNotFoundException | InSufficientFundException e) {
             log.warn(e.getMessage());
             return new ResponseEntity<>(e.getMessage(), HttpStatus.NOT_ACCEPTABLE);
         }
