@@ -6,6 +6,7 @@ import com.dws.challenge.exception.AccountNotFoundException;
 import com.dws.challenge.exception.InSufficientFundException;
 import com.dws.challenge.repository.AccountsRepository;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -13,6 +14,7 @@ import java.math.BigDecimal;
 import java.util.Optional;
 
 @Service
+@Slf4j
 public class AccountsService {
 
   @Getter
@@ -39,6 +41,7 @@ public class AccountsService {
    * This will transfer fund to the credit Account provided
    */
   public void transferFund(FundTransfer fundTransfer) throws AccountNotFoundException, InSufficientFundException{
+    log.info(fundTransfer.toString());
     Account debitAccount = getAccount(fundTransfer.getDebitAccountId());
     Account creditAccount = getAccount(fundTransfer.getCreditAccountId());
     if(Optional.ofNullable(debitAccount).isEmpty()){
@@ -49,10 +52,10 @@ public class AccountsService {
     }
     BigDecimal amount = fundTransfer.getFundToBeTransferred();
     if(amount.compareTo(BigDecimal.ZERO) <= 0 ){
-      throw new InSufficientFundException("Overdrafts is not supported! ");
+      throw new InSufficientFundException("Overdrafts is not supported!");
     }
     if (amount.compareTo(debitAccount.getBalance()) > 0) {
-      throw new InSufficientFundException("Maintain sufficient balance before Fund Transfer.");
+      throw new InSufficientFundException("Maintain sufficient balance before Fund Transfer");
     }
     debitAccount.setBalance(debitAccount.getBalance().subtract(amount));
     emailNotificationService.notifyAboutTransfer(debitAccount,

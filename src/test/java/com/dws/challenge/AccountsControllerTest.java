@@ -14,6 +14,8 @@ import com.dws.challenge.service.AccountsService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
@@ -25,6 +27,7 @@ import org.springframework.web.context.WebApplicationContext;
 @ExtendWith(SpringExtension.class)
 @SpringBootTest
 @WebAppConfiguration
+@Execution(ExecutionMode.SAME_THREAD)
 class AccountsControllerTest {
 
   private MockMvc mockMvc;
@@ -101,5 +104,66 @@ class AccountsControllerTest {
       .andExpect(status().isOk())
       .andExpect(
         content().string("{\"accountId\":\"" + uniqueAccountId + "\",\"balance\":123.45}"));
+  }
+
+  @Test
+  void fundTransferTest() throws Exception {
+    String debitAccId = "Id-11";
+    Account debitAccount = new Account(debitAccId, new BigDecimal("123.45"));
+    this.accountsService.createAccount(debitAccount);
+    String creditAccId = "Id-22";
+    Account creditAccount = new Account(creditAccId, new BigDecimal("223.45"));
+    this.accountsService.createAccount(creditAccount);
+    this.mockMvc.perform(post("/v1/accounts/fund/transfer").contentType(MediaType.APPLICATION_JSON)
+            .content("{\"debitAccountId\": \""+debitAccId+"\",\"creditAccountId\": \""+creditAccId+"\",\"fundToBeTransferred\": 10.01}"))
+            .andExpect(status().isAccepted());
+  }
+
+  @Test
+  void fundTransferTest_Debit_AccountNotFound() throws Exception {
+    String creditAccId = "Id-" + System.currentTimeMillis();
+    Account creditAccount = new Account(creditAccId, new BigDecimal("223.45"));
+    this.accountsService.createAccount(creditAccount);
+    this.mockMvc.perform(post("/v1/accounts/fund/transfer").contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"debitAccountId\": \"Id-11\",\"creditAccountId\": \""+creditAccId+"\",\"fundToBeTransferred\": 10.01}"))
+            .andExpect(status().isNotAcceptable()).andExpect(content().string("Debit Account Not Found"));
+  }
+
+  @Test
+  void fundTransferTest_Credit_AccountNotFound() throws Exception {
+    String debitAccId = "Id-" + System.currentTimeMillis();
+    Account debitAccount = new Account(debitAccId, new BigDecimal("123.45"));
+    this.accountsService.createAccount(debitAccount);
+    this.mockMvc.perform(post("/v1/accounts/fund/transfer").contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"debitAccountId\": \""+debitAccId+"\",\"creditAccountId\": \"Id-21\",\"fundToBeTransferred\": 10.01}"))
+            .andExpect(status().isNotAcceptable()).andExpect(content().string("Credit Account Not Found"));
+  }
+
+  @Test
+  void fundTransferTest_InSufficientFund() throws Exception {
+    String debitAccId = "Id-777";// + System.currentTimeMillis();
+    Account debitAccount = new Account(debitAccId, new BigDecimal("123.45"));
+    this.accountsService.createAccount(debitAccount);
+    String creditAccId = "Id-888";// + System.currentTimeMillis();
+    Account creditAccount = new Account(creditAccId, new BigDecimal("223.45"));
+    this.accountsService.createAccount(creditAccount);
+    this.mockMvc.perform(post("/v1/accounts/fund/transfer").contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"debitAccountId\": \""+debitAccId+"\",\"creditAccountId\": \""+creditAccId+"\",\"fundToBeTransferred\": 10000.01}"))
+            .andExpect(status().isNotAcceptable())
+            .andExpect(content().string("Maintain sufficient balance before Fund Transfer"));
+  }
+
+  @Test
+  void fundTransferTest_No_Overdrafts() throws Exception {
+    String debitAccId = "Id-111";
+    Account debitAccount = new Account(debitAccId, new BigDecimal("123.45"));
+    this.accountsService.createAccount(debitAccount);
+    String creditAccId = "Id-222";
+    Account creditAccount = new Account(creditAccId, new BigDecimal("223.45"));
+    this.accountsService.createAccount(creditAccount);
+    this.mockMvc.perform(post("/v1/accounts/fund/transfer").contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"debitAccountId\": \""+debitAccId+"\",\"creditAccountId\": \""+creditAccId+"\",\"fundToBeTransferred\": -10000.01}"))
+            .andExpect(status().isNotAcceptable())
+            .andExpect(content().string("Overdrafts is not supported!"));
   }
 }
