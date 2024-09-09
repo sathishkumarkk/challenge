@@ -74,8 +74,12 @@ public class AccountsService {
     }finally {
       Account debitAccount = getAccount(fundTransfer.getDebitAccountId());
       Account creditAccount = getAccount(fundTransfer.getCreditAccountId());
-      log.info("Debit Account {}, Balance: {}", debitAccount.getAccountId(), debitAccount.getBalance());
-      log.info("Credit Account {}, Balance: {}", creditAccount.getAccountId(), creditAccount.getBalance());
+      if(Optional.ofNullable(debitAccount).isPresent()){
+        log.info("Debit Account {}, Balance: {}", debitAccount.getAccountId(), debitAccount.getBalance());
+      }
+      if(Optional.ofNullable(creditAccount).isPresent()) {
+        log.info("Credit Account {}, Balance: {}", creditAccount.getAccountId(), creditAccount.getBalance());
+      }
       lock.unlock();
     }
 
